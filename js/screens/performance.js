@@ -1,7 +1,10 @@
 import { DBService } from '../services/db.js';
+import { Layout } from '../components/Layout.js';
+import { Card } from '../components/Card.js';
 
 export class PerformanceScreen {
     constructor(containerId, user, onNavigate) {
+        this.containerId = containerId;
         this.container = document.getElementById(containerId);
         this.user = user;
         this.onNavigate = onNavigate;
@@ -14,67 +17,52 @@ export class PerformanceScreen {
             return;
         }
 
-        this.container.innerHTML = `
-            <div class="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300 pb-20">
-                <div class="mesh-gradient-1 fixed top-0 left-0 w-full h-full pointer-events-none z-0"></div>
-                <div class="mesh-gradient-2 fixed top-0 right-0 w-full h-full pointer-events-none z-0"></div>
+        this.renderSkeleton();
+        // Load data after rendering skeleton
+        setTimeout(() => this.loadPerformance(), 0);
+    }
 
-                <header class="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 border-b border-gray-200/50 dark:border-gray-800/50 transition-all duration-300">
-                    <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <button id="perf-back-btn" class="btn-icon w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300" aria-label="Go back">
-                                <span class="material-icons-round">arrow_back</span>
-                            </button>
-                            <h1 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <span class="material-icons-round text-brand-600 dark:text-cyan-400">insights</span>
-                                Performance
-                            </h1>
+    renderSkeleton() {
+        const skeletonContent = `
+            <div class="flex items-center justify-between mb-8">
+                <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 animate-pulse"></div>
+                <div class="h-8 w-32 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+            </div>
+            <div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 rounded-3xl p-6 sm:p-8 shadow-sm">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                    <div class="w-40 h-5 rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    ${[1, 2, 3, 4].map(() => `
+                        <div class="text-center p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
+                            <div class="w-16 h-8 mx-auto rounded bg-gray-200 dark:bg-gray-700 animate-pulse mb-2"></div>
+                            <div class="w-20 h-3 mx-auto rounded bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
                         </div>
-                    </div>
-                </header>
-
-                <main class="relative z-10 w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6 fade-in" id="perf-main">
-                    <!-- Skeleton loader -->
-                    <section class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 rounded-3xl p-6 sm:p-8 shadow-sm">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700 shimmer"></div>
-                            <div class="w-40 h-5 rounded bg-gray-200 dark:bg-gray-700 shimmer"></div>
-                        </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            ${[1, 2, 3, 4].map(() => `
-                                <div class="text-center p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
-                                    <div class="w-16 h-8 mx-auto rounded bg-gray-200 dark:bg-gray-700 shimmer mb-2"></div>
-                                    <div class="w-20 h-3 mx-auto rounded bg-gray-200 dark:bg-gray-700 shimmer"></div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </section>
-                </main>
+                    `).join('')}
+                </div>
             </div>
         `;
 
-        document.getElementById('perf-back-btn')?.addEventListener('click', () => {
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                this.onNavigate('home');
-            }
-        });
-
-        this.loadPerformance();
+        const layout = new Layout(this.containerId, this.user, { onNavigate: this.onNavigate });
+        this.container.innerHTML = layout.render(`${skeletonContent}`);
+        layout.postRender();
     }
 
     async loadPerformance() {
-        const main = document.getElementById('perf-main');
-        if (!main) return;
-
         try {
             const data = await DBService.getQuizPerformance(this.user.uid);
             this.performanceData = data;
 
+            // Check if user is still on this screen (simple check)
+            if (!document.getElementById('perf-main-container')) {
+                // If we navigate away fast, container might be different. 
+                // But we re-render the whole layout content.
+            }
+
             if (!data.overview) {
-                main.innerHTML = `
-                    <section class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 rounded-3xl p-8 shadow-sm text-center">
+                const emptyContent = `
+                    <div class="flex flex-col items-center justify-center text-center py-10">
                         <span class="material-icons-round text-6xl text-gray-300 dark:text-gray-600 mb-4 block">quiz</span>
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">No Quiz Data Yet</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">Take your first quiz to unlock performance insights, chapter breakdown, and personalized improvement suggestions.</p>
@@ -82,11 +70,24 @@ export class PerformanceScreen {
                             <span class="material-icons-round">rocket_launch</span>
                             Take a Quiz
                         </button>
-                    </section>
+                    </div>
                 `;
-                document.getElementById('start-quiz-empty')?.addEventListener('click', () => {
-                    this.onNavigate('quizlab');
-                });
+
+                const layout = new Layout(this.containerId, this.user, { onNavigate: this.onNavigate });
+                this.container.innerHTML = layout.render(`
+                    <div class="max-w-2xl mx-auto" id="perf-main-container">
+                        <div class="flex items-center gap-4 mb-6">
+                            <button id="perf-back-btn" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300" aria-label="Go back">
+                                <span class="material-icons-round">arrow_back</span>
+                            </button>
+                            <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">Performance</h1>
+                        </div>
+                        ${Card(emptyContent)}
+                    </div>
+                `);
+
+                layout.postRender();
+                this.attachListeners();
                 return;
             }
 
@@ -98,185 +99,218 @@ export class PerformanceScreen {
             const totalMins = Math.floor(overview.totalTime / 60);
             const totalHrs = Math.floor(totalMins / 60);
             const timeStr = totalHrs > 0 ? `${totalHrs}h ${totalMins % 60}m` : `${totalMins}m`;
-
             const sparkline = this.buildSparkline(overview.last5Scores);
 
-            let html = `
-                <!-- Overview -->
-                <section class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 rounded-3xl p-6 sm:p-8 shadow-sm perf-card-animate">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <span class="material-icons-round text-brand-600 dark:text-cyan-400">analytics</span>
-                            Overview
-                        </h3>
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${trendColor} bg-gray-100 dark:bg-gray-800">
-                            <span class="material-icons-round text-sm">${trendIcon}</span>
-                            ${trendLabel}
-                        </span>
-                    </div>
-
-                    <div class="flex flex-col sm:flex-row items-center gap-6 mb-6">
-                        <div class="perf-circle-wrap">
-                            <svg class="perf-circle" viewBox="0 0 120 120" width="120" height="120">
-                                <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width="8" class="text-gray-200 dark:text-gray-700"/>
-                                <circle cx="60" cy="60" r="52" fill="none" stroke="url(#perfGrad)" stroke-width="8" stroke-linecap="round"
-                                    stroke-dasharray="${Math.round(2 * Math.PI * 52)}"
-                                    stroke-dashoffset="${Math.round(2 * Math.PI * 52 * (1 - overview.avgScore / 100))}"
-                                    transform="rotate(-90 60 60)"
-                                    class="perf-circle-fill"/>
-                                <defs>
-                                    <linearGradient id="perfGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#06b6d4"/>
-                                        <stop offset="100%" stop-color="#22d3ee"/>
-                                    </linearGradient>
-                                </defs>
-                                <text x="60" y="55" text-anchor="middle" class="text-2xl font-bold fill-gray-900 dark:fill-white" style="font-size:24px;font-weight:700">${overview.avgScore}%</text>
-                                <text x="60" y="72" text-anchor="middle" class="fill-gray-400 dark:fill-gray-500" style="font-size:11px">Average</text>
-                            </svg>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3 flex-1 w-full">
-                            <div class="perf-stat-card">
-                                <span class="perf-stat-value">${overview.totalQuizzes}</span>
-                                <span class="perf-stat-label">Quizzes</span>
-                            </div>
-                            <div class="perf-stat-card">
-                                <span class="perf-stat-value">${overview.bestScore}%</span>
-                                <span class="perf-stat-label">Best Score</span>
-                            </div>
-                            <div class="perf-stat-card">
-                                <span class="perf-stat-value">${timeStr}</span>
-                                <span class="perf-stat-label">Time Spent</span>
-                            </div>
-                            <div class="perf-stat-card">
-                                ${sparkline}
-                                <span class="perf-stat-label">Last 5</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+            let contentHtml = `
+                <div class="flex items-center gap-4 mb-6">
+                    <button id="perf-back-btn" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300" aria-label="Go back">
+                        <span class="material-icons-round">arrow_back</span>
+                    </button>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span class="material-icons-round text-brand-600 dark:text-cyan-400">insights</span>
+                        Performance
+                    </h1>
+                </div>
             `;
+
+            // Overview Card
+            const overviewContent = `
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span class="material-icons-round text-brand-600 dark:text-cyan-400">analytics</span>
+                        Overview
+                    </h3>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${trendColor} bg-gray-100 dark:bg-gray-800">
+                        <span class="material-icons-round text-sm">${trendIcon}</span>
+                        ${trendLabel}
+                    </span>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center gap-6 mb-6">
+                    <div class="relative w-32 h-32 flex items-center justify-center shrink-0">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="52" fill="none" class="stroke-gray-200 dark:stroke-gray-700" stroke-width="8" />
+                             <circle cx="60" cy="60" r="52" fill="none" stroke="url(#perfGrad)" stroke-width="8" stroke-linecap="round"
+                                stroke-dasharray="${Math.round(2 * Math.PI * 52)}"
+                                stroke-dashoffset="${Math.round(2 * Math.PI * 52 * (1 - overview.avgScore / 100))}"
+                                class="transition-all duration-1000 ease-out"/>
+                             <defs>
+                                <linearGradient id="perfGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#06b6d4"/>
+                                    <stop offset="100%" stop-color="#22d3ee"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                             <span class="text-2xl font-bold text-gray-900 dark:text-white">${overview.avgScore}%</span>
+                             <span class="text-xs text-gray-500">Average</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 flex-1 w-full">
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                            <span class="block text-lg font-bold text-gray-900 dark:text-white">${overview.totalQuizzes}</span>
+                            <span class="text-xs text-gray-500">Quizzes</span>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                            <span class="block text-lg font-bold text-gray-900 dark:text-white">${overview.bestScore}%</span>
+                            <span class="text-xs text-gray-500">Best Score</span>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                            <span class="block text-lg font-bold text-gray-900 dark:text-white">${timeStr}</span>
+                            <span class="text-xs text-gray-500">Time Spent</span>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl flex flex-col items-center justify-center overflow-hidden">
+                             ${sparkline}
+                            <span class="text-xs text-gray-500 mt-1">Last 5</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            contentHtml += Card(overviewContent, "mb-6 perf-card-animate");
 
             // Chapter Breakdown
             if (chapters.length > 0) {
                 const sortedChapters = [...chapters].sort((a, b) => b.avgScore - a.avgScore);
-                html += `
-                <section class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 rounded-3xl p-6 sm:p-8 shadow-sm perf-card-animate" style="animation-delay:0.1s">
+                const chapterContent = `
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-5">
                         <span class="material-icons-round text-brand-600 dark:text-cyan-400">library_books</span>
                         Chapter Breakdown
                     </h3>
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         ${sortedChapters.map(ch => {
                     const barColor = ch.avgScore >= 75 ? 'bg-emerald-500' : ch.avgScore >= 50 ? 'bg-yellow-500' : 'bg-red-500';
-                    const badge = ch.avgScore < 60 ? '<span class="perf-badge-weak">Needs Work</span>' : ch.avgScore >= 85 ? '<span class="perf-badge-strong">Strong</span>' : '';
+                    const badge = ch.avgScore < 60 ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Needs Work</span>' : ch.avgScore >= 85 ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Strong</span>' : '';
                     return `
-                            <div class="perf-chapter-row">
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <div class="flex-1 min-w-0">
-                                        <span class="text-sm font-semibold text-gray-900 dark:text-white truncate block">${this.escapeHtml(ch.chapter)}</span>
-                                        <span class="text-xs text-gray-400 dark:text-gray-500">${this.escapeHtml(ch.subject)} · ${ch.attempts} attempt${ch.attempts !== 1 ? 's' : ''}</span>
+                                <div>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <div class="flex-1 min-w-0 pr-2">
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white truncate block">${this.escapeHtml(ch.chapter)}</span>
+                                            <span class="text-xs text-gray-400 dark:text-gray-500">${this.escapeHtml(ch.subject)} · ${ch.attempts} attempt${ch.attempts !== 1 ? 's' : ''}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            ${badge}
+                                            <span class="text-sm font-bold ${ch.avgScore >= 75 ? 'text-emerald-600 dark:text-emerald-400' : ch.avgScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}">${ch.avgScore}%</span>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center gap-2 ml-3 shrink-0">
-                                        ${badge}
-                                        <span class="text-sm font-bold ${ch.avgScore >= 75 ? 'text-emerald-600 dark:text-emerald-400' : ch.avgScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}">${ch.avgScore}%</span>
+                                    <div class="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                        <div class="h-full rounded-full ${barColor} transition-all duration-1000" style="width:${ch.avgScore}%"></div>
                                     </div>
-                                </div>
-                                <div class="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                    <div class="h-full rounded-full ${barColor} perf-bar-animate" style="width:${ch.avgScore}%"></div>
-                                </div>
-                            </div>`;
+                                </div>`;
                 }).join('')}
                     </div>
-                </section>`;
+                `;
+                contentHtml += Card(chapterContent, "mb-6 perf-card-animate");
             }
 
             // Areas to Improve
             if (improvements.length > 0 || suggestions.length > 0) {
-                html += `
-                <section class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 rounded-3xl p-6 sm:p-8 shadow-sm perf-card-animate" style="animation-delay:0.2s">
+                let improveContent = `
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-5">
                         <span class="material-icons-round text-amber-500">lightbulb</span>
                         Areas to Improve
                     </h3>`;
 
                 if (improvements.length > 0) {
-                    html += `<div class="space-y-3 mb-5">
+                    improveContent += `<div class="space-y-3 mb-5">
                         ${improvements.map(ch => {
                         const statusIcon = ch.status === 'declining' ? 'trending_down' : 'warning';
                         const statusColor = ch.status === 'declining' ? 'text-red-500' : 'text-amber-500';
                         const statusText = ch.status === 'declining' ? 'Declining — needs attention' : ch.status === 'weak' ? 'Below average' : 'Needs more practice';
                         return `
-                            <div class="perf-improve-row">
-                                <div class="flex items-start gap-3">
+                                <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
                                     <span class="material-icons-round ${statusColor} text-xl mt-0.5 shrink-0">${statusIcon}</span>
                                     <div class="flex-1 min-w-0">
                                         <span class="text-sm font-semibold text-gray-900 dark:text-white block">${this.escapeHtml(ch.chapter)}</span>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">${statusText} · Avg: ${ch.avgScore}% · Last: ${ch.lastScore}%</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">${statusText} · Avg: ${ch.avgScore}%</span>
                                     </div>
-                                    <button class="perf-retake-btn shrink-0" data-subject="${this.escapeHtml(ch.subject)}" data-chapter="${this.escapeHtml(ch.chapter)}">
+                                    <button class="perf-retake-btn shrink-0 text-xs bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm" data-subject="${this.escapeHtml(ch.subject)}" data-chapter="${this.escapeHtml(ch.chapter)}">
                                         <span class="material-icons-round text-sm">refresh</span>
                                         Retake
                                     </button>
-                                </div>
-                            </div>`;
+                                </div>`;
                     }).join('')}
                     </div>`;
                 }
 
                 if (suggestions.length > 0) {
-                    html += `<div class="space-y-2">
+                    improveContent += `<div class="space-y-2">
                         ${suggestions.map(s => {
                         const icon = s.type === 'success' ? 'check_circle' : s.type === 'warning' ? 'warning' : 'error';
-                        const color = s.type === 'success' ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : s.type === 'warning' ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' : 'text-red-500 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+                        const colorClass = s.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : s.type === 'warning' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800';
                         return `
-                            <div class="flex items-start gap-2.5 p-3 rounded-xl border ${color}">
-                                <span class="material-icons-round text-lg shrink-0 mt-0.5">${icon}</span>
-                                <span class="text-sm text-gray-700 dark:text-gray-300">${this.escapeHtml(s.message)}</span>
-                            </div>`;
+                                <div class="flex items-start gap-2.5 p-3 rounded-xl border ${colorClass}">
+                                    <span class="material-icons-round text-lg shrink-0 mt-0.5">${icon}</span>
+                                    <span class="text-sm font-medium">${this.escapeHtml(s.message)}</span>
+                                </div>`;
                     }).join('')}
                     </div>`;
                 }
-                html += `</section>`;
+
+                contentHtml += Card(improveContent, "perf-card-animate");
             }
 
-            main.innerHTML = html;
+            const finalHtml = `<div class="max-w-2xl mx-auto flex flex-col gap-6" id="perf-main-container">${contentHtml}</div>`;
 
-            // Retake buttons
-            main.querySelectorAll('.perf-retake-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const subject = btn.dataset.subject;
-                    const chapter = btn.dataset.chapter;
-                    window.location.hash = `#quizlab?subject=${encodeURIComponent(subject)}&chapter=${encodeURIComponent(chapter)}`;
-                });
-            });
+            const layout = new Layout(this.containerId, this.user, { onNavigate: this.onNavigate });
+            this.container.innerHTML = layout.render(finalHtml);
+            layout.postRender();
+            this.attachListeners();
 
         } catch (err) {
-            main.innerHTML = `
-                <section class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 rounded-3xl p-6 shadow-sm text-center">
+            console.error(err);
+            const errorContent = `
+                <div class="text-center py-8">
                     <span class="material-icons-round text-3xl text-gray-300 dark:text-gray-600 mb-2 block">error_outline</span>
                     <p class="text-sm text-gray-500 dark:text-gray-400">Couldn't load performance data.</p>
-                </section>
+                </div>
             `;
+            const layout = new Layout(this.containerId, this.user, { onNavigate: this.onNavigate });
+            this.container.innerHTML = layout.render(`<div class="max-w-2xl mx-auto">${Card(errorContent)}</div>`);
+            layout.postRender();
         }
     }
 
+    attachListeners() {
+        document.getElementById('perf-back-btn')?.addEventListener('click', () => {
+            if (window.history.length > 1) window.history.back();
+            else this.onNavigate('home');
+        });
+
+        document.getElementById('start-quiz-empty')?.addEventListener('click', () => this.onNavigate('quizlab'));
+
+        this.container.querySelectorAll('.perf-retake-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const subject = btn.dataset.subject;
+                const chapter = btn.dataset.chapter;
+                window.location.hash = `#quizlab?subject=${encodeURIComponent(subject)}&chapter=${encodeURIComponent(chapter)}`;
+            });
+        });
+    }
+
     buildSparkline(scores) {
-        if (!scores || scores.length === 0) return '<span class="perf-stat-value">—</span>';
+        if (!scores || scores.length === 0) return '<span class="font-mono text-gray-400 text-lg">—</span>';
         const w = 60, h = 24;
         const max = Math.max(...scores, 100);
         const min = Math.min(...scores, 0);
         const range = max - min || 1;
-        const pts = scores.map((s, i) => {
+
+        let pts = '';
+        scores.forEach((s, i) => {
             const x = (i / Math.max(scores.length - 1, 1)) * w;
             const y = h - ((s - min) / range) * h;
-            return `${x},${y}`;
-        }).join(' ');
-        return `<svg width="${w}" height="${h}" class="perf-sparkline"><polyline points="${pts}" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+            pts += `${x},${y} `;
+        });
+
+        // Last point circle
+        const lastY = h - ((scores[scores.length - 1] - min) / range) * h;
+
+        return `<svg width="${w}" height="${h}" class="overflow-visible"><polyline points="${pts.trim()}" fill="none" class="stroke-cyan-500" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${w}" cy="${lastY}" r="3" class="fill-cyan-500" /></svg>`;
     }
 
     escapeHtml(str) {
+        if (!str) return '';
         const div = document.createElement('div');
-        div.textContent = str || '';
+        div.textContent = str;
         return div.innerHTML;
     }
 }
