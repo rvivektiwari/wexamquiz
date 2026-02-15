@@ -81,7 +81,9 @@ export class LoginScreen {
         `;
 
         const layout = new Layout(this.containerId, null, { // User is null
-            onNavigateStatic: this.onNavigateStatic
+            onNavigateStatic: this.onNavigateStatic,
+            showHeader: false,
+            showFooter: false
         });
 
         // Wrap in Card and center

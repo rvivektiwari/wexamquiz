@@ -17,6 +17,12 @@ export class Layout {
         const authPhoto = this.user?.photoURL;
         const avatarUrl = fsPhoto || authPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=3b82f6&color=fff`;
 
+        // 🧠 Logic: Show header/footer if explicitly requested, OR if logged in options are undefined
+        // Default behavior: if isLoggedIn -> show, if not -> hide
+        const isLoggedIn = !!this.user;
+        const shouldShowHeader = this.options.showHeader !== undefined ? this.options.showHeader : isLoggedIn;
+        const shouldShowFooter = this.options.showFooter !== undefined ? this.options.showFooter : isLoggedIn;
+
         const html = `
             <div class="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 relative overflow-hidden flex flex-col">
                 <!-- Mesh Gradients (Fixed Background) -->
@@ -26,7 +32,7 @@ export class Layout {
                 </div>
 
                 <!-- 🧊 GLOBAL HEADER -->
-                ${this.options.showHeader !== false ? `
+                ${shouldShowHeader ? `
                 <header class="sticky top-0 z-50 h-[80px] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 flex items-center justify-center transition-colors duration-300">
                     <div class="w-full max-w-7xl px-6 flex justify-between items-center">
                         <!-- Logo -->
@@ -123,7 +129,7 @@ export class Layout {
                     ${content}
                 </main>
 
-                 ${this.options.showFooter !== false ? `
+                 ${shouldShowFooter ? `
                  <footer class="border-t border-gray-200 dark:border-gray-800 py-12 bg-white/50 dark:bg-gray-950/50 backdrop-blur-sm z-10">
                     <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
                         <p>&copy; ${new Date().getFullYear()} Wexam. All rights reserved.</p>

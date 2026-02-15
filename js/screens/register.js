@@ -96,7 +96,9 @@ export class RegisterScreen {
         `;
 
         const layout = new Layout(this.containerId, null, {
-            onNavigateStatic: this.onNavigateStatic
+            onNavigateStatic: this.onNavigateStatic,
+            showHeader: false,
+            showFooter: false
         });
 
         const cardHtml = Card(contentHtml, "max-w-md mx-auto w-full");
