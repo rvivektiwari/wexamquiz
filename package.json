@@ -6,7 +6,7 @@
   "scripts": {
     "start": "vercel dev",
     "build": "npm run build:css",
-    "build:css": "tailwindcss -i ./css/input.css -o ./css/output.css --minify",
+    "build:css": "npx tailwindcss -i ./css/input.css -o ./css/output.css --minify",
     "dev:css": "tailwindcss -i ./css/input.css -o ./css/output.css --watch"
   },
   "keywords": [],
